@@ -1,10 +1,7 @@
 /**
- * main.js
- * --------
- * Mengambil data dari API Flask (lihat app.py) dan menampilkannya sebagai
- * peta choropleth (Leaflet), grafik (Chart.js), daftar peringkat, dan
- * tabel data. Semua data kasus diambil lewat fetch() — tidak ada angka
- * yang ditulis manual di file ini.
+ * main.js — versi dengan fitur tambahan:
+ * loading screen, animasi counter, badge risiko,
+ * export CSV, scroll to top, highlight risiko tinggi
  */
 
 (() => {
@@ -47,6 +44,89 @@
     return WARNA_SKALA[0];
   }
 
+  /* ====================== LOADING SCREEN ====================== */
+  function sembunyikanLoading() {
+    const el = document.getElementById("loading-screen");
+    if (el) {
+      setTimeout(() => el.classList.add("hidden"), 200);
+      setTimeout(() => el.remove(), 800);
+    }
+  }
+
+  /* ====================== SCROLL TO TOP ====================== */
+  function initScrollTop() {
+    const btn = document.getElementById("scroll-top");
+    if (!btn) return;
+    window.addEventListener("scroll", () => {
+      btn.classList.toggle("visible", window.scrollY > 400);
+    });
+    btn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  /* ====================== COUNTER ANIMASI ====================== */
+  function animasiCounter(el, target, durasi = 1000) {
+    if (isNaN(target)) {
+      el.textContent = target;
+      return;
+    }
+    const mulai = performance.now();
+    function update(now) {
+      const progress = Math.min((now - mulai) / durasi, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(ease * target).toLocaleString("id-ID");
+      if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+  }
+
+  /* ====================== BADGE RISIKO ====================== */
+  function badgeRisiko(nilai, max) {
+    const rasio = max > 0 ? nilai / max : 0;
+    if (rasio > 0.6)
+      return `<span class="risiko-badge risiko-badge--tinggi">Tinggi</span>`;
+    if (rasio > 0.3)
+      return `<span class="risiko-badge risiko-badge--sedang">Sedang</span>`;
+    return `<span class="risiko-badge risiko-badge--rendah">Rendah</span>`;
+  }
+
+  /* ====================== EXPORT CSV ====================== */
+  function exportCSV() {
+    if (!state.semuaData) return;
+    const header = [
+      "Kecamatan",
+      "Kasus 2023",
+      "Kasus 2024",
+      "Perubahan",
+      "% Perubahan",
+      "Risiko",
+    ];
+    const rows = state.semuaData.map((d) => {
+      const rasio =
+        state.maxKasus > 0 ? (d.kasus[2024] ?? 0) / state.maxKasus : 0;
+      const risiko = rasio > 0.6 ? "Tinggi" : rasio > 0.3 ? "Sedang" : "Rendah";
+      return [
+        d.kecamatan,
+        d.kasus[2023] ?? "",
+        d.kasus[2024] ?? "",
+        d.delta ?? "",
+        d.persen_perubahan != null ? d.persen_perubahan.toFixed(1) + "%" : "",
+        risiko,
+      ];
+    });
+    const csv = [header, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tb-paru-bandung-${state.tahun}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   /* ------------------------------- peta ------------------------------- */
   let map, layerKecamatan, layerAktif;
 
@@ -57,15 +137,15 @@
       minZoom: 11,
       maxZoom: 15,
     });
-
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
       {
         attribution: "&copy; OpenStreetMap &copy; CARTO",
         maxZoom: 19,
       },
     ).addTo(map);
   }
+
   function styleFitur(feature) {
     return {
       fillColor: warnaUntuk(feature.properties.jumlah_kasus),
@@ -90,9 +170,7 @@
       state.petaCache[tahun] = await ambilJSON(`/api/peta?tahun=${tahun}`);
     }
     const geo = state.petaCache[tahun];
-
     if (layerKecamatan) map.removeLayer(layerKecamatan);
-
     layerKecamatan = L.geoJSON(geo, {
       style: styleFitur,
       onEachFeature: (feature, layer) => {
@@ -115,7 +193,6 @@
         });
       },
     }).addTo(map);
-
     if (!map._sudahFit) {
       map.fitBounds(layerKecamatan.getBounds(), { padding: [12, 12] });
       map._sudahFit = true;
@@ -126,11 +203,9 @@
     if (layerAktif) layerKecamatan.resetStyle(layerAktif);
     layerAktif = layer || null;
     if (layer) layer.setStyle({ weight: 2.5, opacity: 1, fillOpacity: 1 });
-
     document
       .querySelectorAll(".is-highlight, .ranking-item.is-active")
       .forEach((el) => el.classList.remove("is-highlight", "is-active"));
-
     const baris = document.querySelector(`tr[data-kecamatan="${nama}"]`);
     if (baris) {
       baris.classList.add("is-highlight");
@@ -155,9 +230,9 @@
       const dari = Math.round((i / 5) * max);
       const sampai = i === 4 ? max : Math.round(((i + 1) / 5) * max);
       return `<div class="map-legend__row">
-                <span class="map-legend__swatch" style="background:${warna}"></span>
-                <span>${labelRange[i]} (${dari}–${sampai})</span>
-              </div>`;
+        <span class="map-legend__swatch" style="background:${warna}"></span>
+        <span>${labelRange[i]} (${dari}–${sampai})</span>
+      </div>`;
     }).join("");
     document.getElementById("legenda-peta").innerHTML =
       `<div class="map-legend__title">Jumlah kasus</div>${html}
@@ -176,8 +251,12 @@
     }
     const s = state.statistikCache[tahun];
 
-    document.getElementById("stat-total").textContent = fmt(s.total_kasus);
-    document.getElementById("stat-rata").textContent = fmt(s.rata_rata);
+    /* animasi counter untuk angka */
+    const elTotal = document.getElementById("stat-total");
+    const elRata = document.getElementById("stat-rata");
+    animasiCounter(elTotal, s.total_kasus);
+    animasiCounter(elRata, Math.round(s.rata_rata));
+
     document.getElementById("stat-tertinggi").textContent =
       s.tertinggi.kecamatan;
     document.getElementById("stat-tertinggi-n").textContent =
@@ -194,12 +273,15 @@
         ? Math.round((diff / sebelumnya.total_kasus) * 1000) / 10
         : 0;
       const naik = diff > 0;
-      subTotal.innerHTML = `<span class="${naik ? "delta-up" : "delta-down"}">${naik ? "▲" : "▼"} ${fmt(
-        Math.abs(diff),
-      )} (${Math.abs(persen)}%)</span> dari ${tahun - 1} · ${s.jumlah_kecamatan_terdata} kecamatan terdata`;
+      subTotal.innerHTML = `<span class="${naik ? "delta-up" : "delta-down"}">${naik ? "▲" : "▼"} ${fmt(Math.abs(diff))} (${Math.abs(persen)}%)</span> dari ${tahun - 1} · ${s.jumlah_kecamatan_terdata} kecamatan terdata`;
     } else {
       subTotal.textContent = `dari ${s.jumlah_kecamatan_terdata} kecamatan terdata`;
     }
+
+    /* update timestamp */
+    const now = new Date();
+    const el = document.getElementById("last-update");
+    if (el) el.textContent = `Terakhir dimuat: ${now.toLocaleString("id-ID")}`;
   }
 
   /* ------------------------------ ranking ------------------------------ */
@@ -239,9 +321,7 @@
 
   function chartTersedia() {
     if (typeof Chart === "undefined") {
-      console.warn(
-        "Chart.js gagal dimuat (cek koneksi internet / pemblokir CDN). Grafik dilewati.",
-      );
+      console.warn("Chart.js gagal dimuat.");
       return false;
     }
     return true;
@@ -255,7 +335,6 @@
     const labels = data.map((d) => d.kecamatan);
     const nilai = data.map((d) => d.kasus);
     const warna = nilai.map(warnaUntuk);
-
     if (chartTop10) chartTop10.destroy();
     chartTop10 = new Chart(document.getElementById("chart-top10"), {
       type: "bar",
@@ -274,6 +353,7 @@
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 800, easing: "easeOutQuart" },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: (c) => `${fmt(c.raw)} kasus` } },
@@ -295,7 +375,7 @@
     const labels = data.map((d) => d.kecamatan);
     const nilai = data.map((d) => d.delta);
     const warna = nilai.map((v) => (v > 0 ? WARNA_ALERT : WARNA_OK));
-
+    if (chartDelta) chartDelta.destroy();
     chartDelta = new Chart(document.getElementById("chart-delta"), {
       type: "bar",
       data: {
@@ -313,6 +393,7 @@
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 800, easing: "easeOutQuart" },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -324,7 +405,7 @@
         },
         scales: {
           x: {
-            grid: { color: "rgba(22,32,29,0.07)" },
+            grid: { color: "rgba(232,229,220,0.12)" },
             ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } },
           },
           y: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
@@ -373,13 +454,20 @@
               : d.delta > 0
                 ? `<span class="pill pill--up">▲ ${fmt(d.delta)}</span>`
                 : `<span class="pill pill--down">▼ ${fmt(Math.abs(d.delta))}</span>`;
-        return `<tr data-kecamatan="${d.kecamatan}">
-          <td>${d.kecamatan}</td>
-          <td class="is-num">${fmt(d.kasus[2023])}</td>
-          <td class="is-num">${fmt(d.kasus[2024])}</td>
-          <td class="is-num">${pill}</td>
-          <td class="is-num">${d.persen_perubahan === null ? "–" : d.persen_perubahan.toFixed(1) + "%"}</td>
-        </tr>`;
+
+        const kasus2024 = d.kasus[2024] ?? 0;
+        const rasio = state.maxKasus > 0 ? kasus2024 / state.maxKasus : 0;
+        const tinggi = rasio > 0.6;
+        const badge = badgeRisiko(kasus2024, state.maxKasus);
+
+        return `<tr data-kecamatan="${d.kecamatan}" class="${tinggi ? "is-risiko-tinggi" : ""}">
+        <td>${d.kecamatan}</td>
+        <td class="is-num">${fmt(d.kasus[2023])}</td>
+        <td class="is-num">${fmt(d.kasus[2024])}</td>
+        <td class="is-num">${pill}</td>
+        <td class="is-num">${d.persen_perubahan === null ? "–" : d.persen_perubahan.toFixed(1) + "%"}</td>
+        <td class="is-num">${badge}</td>
+      </tr>`;
       })
       .join("");
 
@@ -436,13 +524,18 @@
         renderTabel();
       });
     });
+    /* export CSV */
+    const btnExport = document.getElementById("btn-export-csv");
+    if (btnExport) btnExport.addEventListener("click", exportCSV);
   }
 
   async function mulai() {
+    initScrollTop();
     initMap();
     pasangEvent();
-    await muatTabel(); // wajib pertama: menentukan state.maxKasus untuk skala warna
+    await muatTabel();
     await Promise.all([muatChartDelta(), setTahun(state.tahun)]);
+    sembunyikanLoading(); /* sembunyikan loading setelah semua data siap */
   }
 
   document.addEventListener("DOMContentLoaded", mulai);

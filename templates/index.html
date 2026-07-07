@@ -9,24 +9,248 @@
       content="Pemetaan dan analisis sebaran kasus Tuberkulosis Paru di 30 kecamatan Kota Bandung, tahun 2023–2024."
     />
 
-    <!-- Font: keluarga IBM Plex — dipakai konsisten untuk kesan laporan data/klinis -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-
-    <!-- Leaflet untuk peta choropleth -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
 
-    <link rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+      /* ===== LOADING SCREEN ===== */
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: linear-gradient(
+          160deg,
+          #1a1b3a 0%,
+          #2d1b4e 55%,
+          #3b2667 100%
+        );
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        transition:
+          opacity 0.5s ease,
+          visibility 0.5s ease;
+      }
+      #loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+      .loading-logo {
+        font-family: "IBM Plex Serif", serif;
+        font-size: 22px;
+        font-weight: 600;
+        color: #e8e5dc;
+        letter-spacing: -0.01em;
+        text-align: center;
+        line-height: 1.3;
+      }
+      .loading-logo span {
+        display: block;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #c9b8e8;
+        margin-bottom: 10px;
+      }
+      .loading-bar-wrap {
+        width: 220px;
+        height: 3px;
+        background: rgba(232, 229, 220, 0.15);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .loading-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #c9b8e8, #e8e5dc);
+        border-radius: 2px;
+        animation: loadProgress 1.8s ease forwards;
+      }
+      @keyframes loadProgress {
+        0% {
+          width: 0%;
+        }
+        60% {
+          width: 75%;
+        }
+        100% {
+          width: 100%;
+        }
+      }
+      .loading-dots {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        color: rgba(232, 229, 220, 0.6);
+        letter-spacing: 0.05em;
+      }
+      .loading-dots::after {
+        content: "";
+        animation: dots 1.5s steps(4, end) infinite;
+      }
+      @keyframes dots {
+        0% {
+          content: "";
+        }
+        25% {
+          content: ".";
+        }
+        50% {
+          content: "..";
+        }
+        75% {
+          content: "...";
+        }
+        100% {
+          content: "";
+        }
+      }
+
+      /* ===== SCROLL TO TOP ===== */
+      #scroll-top {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        z-index: 100;
+        width: 42px;
+        height: 42px;
+        background: linear-gradient(160deg, #2d1b4e, #3b2667);
+        border: 1px solid rgba(201, 184, 232, 0.4);
+        color: #e8e5dc;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: translateY(12px);
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s ease,
+          background 0.2s ease;
+        pointer-events: none;
+        border-radius: 2px;
+      }
+      #scroll-top.visible {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      #scroll-top:hover {
+        background: linear-gradient(160deg, #3b2667, #4a2d80);
+      }
+
+      /* ===== BADGE RISIKO ===== */
+      .risiko-badge {
+        display: inline-block;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 2px;
+        font-weight: 600;
+      }
+      .risiko-badge--tinggi {
+        background: rgba(179, 66, 47, 0.25);
+        color: #e87060;
+        border: 1px solid rgba(179, 66, 47, 0.4);
+      }
+      .risiko-badge--sedang {
+        background: rgba(179, 129, 47, 0.25);
+        color: #e8b060;
+        border: 1px solid rgba(179, 129, 47, 0.4);
+      }
+      .risiko-badge--rendah {
+        background: rgba(62, 122, 79, 0.25);
+        color: #70c880;
+        border: 1px solid rgba(62, 122, 79, 0.4);
+      }
+
+      /* ===== HIGHLIGHT RISIKO TINGGI DI TABEL ===== */
+      tr.is-risiko-tinggi td:first-child::after {
+        content: " 🔴";
+        font-size: 10px;
+      }
+
+      /* ===== EXPORT BUTTON ===== */
+      .btn-export {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        padding: 8px 14px;
+        background: transparent;
+        border: 1px solid rgba(201, 184, 232, 0.4);
+        color: #c9b8e8;
+        cursor: pointer;
+        transition:
+          background 0.18s ease,
+          color 0.18s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .btn-export:hover {
+        background: rgba(201, 184, 232, 0.12);
+        color: #e8e5dc;
+      }
+
+      /* ===== PULSE RISIKO TINGGI ===== */
+      @keyframes pulse-alert {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(179, 66, 47, 0.4);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(179, 66, 47, 0);
+        }
+      }
+      .stat-card--alert {
+        animation:
+          rise 0.55s 0.19s ease both,
+          pulse-alert 2.5s 1s ease infinite;
+      }
+
+      /* ===== LAST UPDATED ===== */
+      .last-update {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        color: rgba(232, 229, 220, 0.5);
+        text-align: right;
+        margin-top: 8px;
+      }
+    </style>
   </head>
+
   <body>
+    <!-- ===== LOADING SCREEN ===== -->
+    <div id="loading-screen">
+      <div class="loading-logo">
+        <span>Pemetaan Epidemiologis · Kota Bandung</span>
+        Sebaran Penyakit Tuberkulosis Paru
+      </div>
+      <div class="loading-bar-wrap">
+        <div class="loading-bar"></div>
+      </div>
+      <div class="loading-dots">Memuat data</div>
+    </div>
+
+    <!-- ===== SCROLL TO TOP ===== -->
+    <button id="scroll-top" title="Kembali ke atas">↑</button>
+
     <div class="grain"></div>
 
     <header class="topbar">
@@ -41,35 +265,45 @@
             Bandung, membandingkan data tahun 2023 dan 2024.
           </p>
         </div>
-         <div class="year-toggle" role="tablist" aria-label="Pilih tahun data">
-         {% for t in tahun_tersedia %}
-  <button
-    class="year-toggle__btn {% if loop.last %}is-active{% endif %}"
-    data-tahun="{{ t }}"
-    role="tab"
-    aria-selected="{{ 'true' if loop.last else 'false' }}"
-  >
-    {{ t }}
-  </button>
-  {% endfor %}
-</div>
+        <div class="year-toggle" role="tablist" aria-label="Pilih tahun data">
+          {% for t in tahun_tersedia %}
+          <button
+            class="year-toggle__btn {% if loop.last %}is-active{% endif %}"
+            data-tahun="{{ t }}"
+            role="tab"
+            aria-selected="{{ 'true' if loop.last else 'false' }}"
+          >
+            {{ t }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
     </header>
 
     <main class="layout">
       <!-- ============ RINGKASAN STATISTIK ============ -->
       <section class="stat-grid" aria-label="Ringkasan statistik">
-        <article class="stat-card stat-card--primary">
+        <article
+          class="stat-card stat-card--primary"
+          title="Total seluruh kasus TB Paru yang tercatat di semua kecamatan pada tahun yang dipilih"
+        >
           <span class="stat-card__label">Total kasus tercatat</span>
           <span class="stat-card__value" id="stat-total">—</span>
           <span class="stat-card__sub" id="stat-total-delta"></span>
         </article>
-        <article class="stat-card">
+        <article
+          class="stat-card"
+          title="Rata-rata jumlah kasus per kecamatan pada tahun yang dipilih"
+        >
           <span class="stat-card__label">Rata-rata per kecamatan</span>
           <span class="stat-card__value" id="stat-rata">—</span>
           <span class="stat-card__sub">orang / kecamatan</span>
         </article>
-        <article class="stat-card stat-card--alert">
-          <span class="stat-card__label">Kecamatan tertinggi</span>
+        <article
+          class="stat-card stat-card--alert"
+          title="Kecamatan dengan jumlah kasus TB Paru tertinggi — perlu perhatian prioritas"
+        >
+          <span class="stat-card__label">⚠ Kecamatan tertinggi</span>
           <span
             class="stat-card__value stat-card__value--text"
             id="stat-tertinggi"
@@ -77,8 +311,11 @@
           >
           <span class="stat-card__sub" id="stat-tertinggi-n"></span>
         </article>
-        <article class="stat-card stat-card--ok">
-          <span class="stat-card__label">Kecamatan terendah</span>
+        <article
+          class="stat-card stat-card--ok"
+          title="Kecamatan dengan jumlah kasus TB Paru terendah"
+        >
+          <span class="stat-card__label">✓ Kecamatan terendah</span>
           <span
             class="stat-card__value stat-card__value--text"
             id="stat-terendah"
@@ -148,13 +385,23 @@
             <span class="section-tag">Data Lengkap</span>
             <h2 class="panel__title">Rekap 30 Kecamatan</h2>
           </div>
-          <div class="table-search">
-            <input
-              type="search"
-              id="cari-kecamatan"
-              placeholder="Cari nama kecamatan…"
-              aria-label="Cari kecamatan"
-            />
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              align-items: center;
+              flex-wrap: wrap;
+            "
+          >
+            <div class="table-search">
+              <input
+                type="search"
+                id="cari-kecamatan"
+                placeholder="Cari nama kecamatan…"
+                aria-label="Cari kecamatan"
+              />
+            </div>
+            <button class="btn-export" id="btn-export-csv">⬇ Export CSV</button>
           </div>
         </div>
 
@@ -169,15 +416,17 @@
                 <th data-key="persen" class="is-sortable is-num">
                   % Perubahan
                 </th>
+                <th class="is-num">Risiko</th>
               </tr>
             </thead>
             <tbody id="tabel-body">
               <tr>
-                <td colspan="5" class="table-loading">Memuat data…</td>
+                <td colspan="6" class="table-loading">Memuat data…</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <p class="last-update" id="last-update"></p>
       </section>
     </main>
 
@@ -190,7 +439,6 @@
       <p class="site-footer__stack">Flask · Pandas · Leaflet.js · Chart.js</p>
     </footer>
 
-    <!-- Libraries -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
