@@ -3,27 +3,28 @@
    ========================================================== */
 
 :root {
-  --paper: #f1eee6;
-  --paper-raised: #faf8f3;
-  --ink: #1b2421;
-  --ink-soft: #5b655f;
-  --ink-faint: #8a9189;
-  --teal: #2b2352;
-  --teal-bright: #4b3d86;
-  --rust: #b3422f;
-  --rust-soft: #f4ded7;
-  --green: #3e7a4f;
-  --green-soft: #dce9dd;
-  --amber: #b3812f;
-  --amber-soft: #f1e4c9;
-  --line: #d8d2c4;
-  --line-strong: #b9b2a0;
+  --paper: #1a1b1f;
+  --paper-raised: #24262b;
+  --ink: #e8e5dc;
+  --ink-soft: #a8a49a;
+  --ink-faint: #6b6860;
+  --teal: #4b3d86;
+  --teal-bright: #7d6bc4;
+  --rust: #e0704f;
+  --rust-soft: #3a2620;
+  --green: #6ba87d;
+  --green-soft: #22301f;
+  --amber: #e0a24f;
+  --amber-soft: #302818;
+  --line: #35373d;
+  --line-strong: #45474e;
   --shadow:
-    0 1px 0 rgba(27, 36, 33, 0.04), 0 8px 24px -16px rgba(27, 36, 33, 0.35);
+    0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.6);
 
   --dark-grad: linear-gradient(160deg, #1a1b3a 0%, #2d1b4e 55%, #3b2667 100%);
   --dark-text: #e8e5dc;
   --dark-text-soft: #c9b8e8;
+}
 
   --serif: "IBM Plex Serif", Georgia, serif;
   --sans: "IBM Plex Sans", -apple-system, sans-serif;
@@ -210,7 +211,7 @@ a {
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--teal);
+   color: var(--ink-soft);
   margin-bottom: 6px;
 }
 .panel__title {
@@ -373,6 +374,13 @@ a {
   align-items: center;
   gap: 6px;
 }
+.map-legend__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
 .map-hint {
   margin: 10px 0 0;
   font-family: var(--mono);
@@ -528,6 +536,25 @@ a {
 }
 .chart-block .panel__head {
   border-bottom-color: rgba(232, 229, 220, 0.2);
+}
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dark-text-soft);
+}
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-legend__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
 }
 .chart-wrap {
   height: 300px;
@@ -702,4 +729,19 @@ th:focus-visible {
 /* ======================= LEAFLET MAP THEME ======================= */
 .leaflet-tile-pane {
   filter: hue-rotate(220deg) saturate(0.8) brightness(0.8);
+}
+/* ===== YEAR TOGGLE LABEL ===== */
+.year-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.year-toggle-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }

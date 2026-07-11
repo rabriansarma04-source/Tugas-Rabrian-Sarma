@@ -265,17 +265,20 @@
             Bandung, membandingkan data tahun 2023 dan 2024.
           </p>
         </div>
-        <div class="year-toggle" role="tablist" aria-label="Pilih tahun data">
-          {% for t in tahun_tersedia %}
-          <button
-            class="year-toggle__btn {% if loop.last %}is-active{% endif %}"
-            data-tahun="{{ t }}"
-            role="tab"
-            aria-selected="{{ 'true' if loop.last else 'false' }}"
-          >
-            {{ t }}
-          </button>
-          {% endfor %}
+        <div class="year-toggle-wrap">
+          <span class="year-toggle-label">Tahun Kasus</span>
+          <div class="year-toggle" role="tablist" aria-label="Pilih tahun data">
+            {% for t in tahun_tersedia %}
+            <button
+              class="year-toggle__btn {% if loop.last %}is-active{% endif %}"
+              data-tahun="{{ t }}"
+              role="tab"
+              aria-selected="{{ 'true' if loop.last else 'false' }}"
+            >
+              {{ t }}
+            </button>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </header>
@@ -365,6 +368,7 @@
           <div class="chart-wrap">
             <canvas id="chart-top10"></canvas>
           </div>
+          <div class="chart-legend" id="top10-legend"></div>
         </div>
 
         <div class="panel">
@@ -374,6 +378,22 @@
           </div>
           <div class="chart-wrap">
             <canvas id="chart-delta"></canvas>
+          </div>
+          <div class="chart-legend">
+            <span
+              ><span
+                class="chart-legend__swatch"
+                style="background: #5c7f58"
+              ></span
+              >Kasus menurun</span
+            >
+            <span
+              ><span
+                class="chart-legend__swatch"
+                style="background: #b24433"
+              ></span
+              >Kasus meningkat</span
+            >
           </div>
         </div>
       </section>
@@ -429,10 +449,9 @@
         <p class="last-update" id="last-update"></p>
       </section>
     </main>
-
     <footer class="site-footer">
       <p>
-        Dibuat sebagai Proyek Perangkat Lunak · Data kasus:
+        Tugas Proyek Perangkat Lunak · Rabrian Sarma · Data kasus:
         <code>TB_PARU23-24.xlsx</code> · Batas wilayah: GeoJSON kecamatan Kota
         Bandung (kode wilayah 3273).
       </p>

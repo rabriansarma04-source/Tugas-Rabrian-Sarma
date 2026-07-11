@@ -21,6 +21,21 @@
   };
 
   const WARNA_SKALA = ["#F1E4BE", "#E7B65A", "#D9874C", "#C0533C", "#7E2A24"];
+  const LABEL_SKALA = [
+    "Sangat rendah",
+    "Rendah",
+    "Sedang",
+    "Tinggi",
+    "Sangat tinggi",
+  ];
+  function kategoriIndexUntuk(nilai) {
+    const rasio = state.maxKasus > 0 ? nilai / state.maxKasus : 0;
+    if (rasio > 0.8) return 4;
+    if (rasio > 0.6) return 3;
+    if (rasio > 0.4) return 2;
+    if (rasio > 0.2) return 1;
+    return 0;
+  }
   const WARNA_KOSONG = "#E3E6E1";
   const WARNA_OK = "#5C7F58";
   const WARNA_ALERT = "#B24433";
@@ -363,10 +378,28 @@
             grid: { color: "rgba(232,229,220,0.12)" },
             ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } },
           },
-          y: { grid: { display: false }, ticks: { font: { size: 12 } } },
+          y: {
+            grid: {
+              display: true,
+              color: "rgba(232,229,220,0.12)",
+              drawTicks: false,
+            },
+            ticks: { font: { size: 12 } },
+          },
         },
       },
     });
+    const idxTerpakai = [...new Set(nilai.map(kategoriIndexUntuk))].sort(
+      (a, b) => a - b,
+    );
+    const legendHtml = idxTerpakai
+      .map(
+        (i) =>
+          `<span><span class="chart-legend__swatch" style="background:${WARNA_SKALA[i]}"></span>${LABEL_SKALA[i]}</span>`,
+      )
+      .join("");
+    const legendEl = document.getElementById("top10-legend");
+    if (legendEl) legendEl.innerHTML = legendHtml;
   }
 
   async function muatChartDelta() {
@@ -408,7 +441,14 @@
             grid: { color: "rgba(232,229,220,0.12)" },
             ticks: { font: { family: "'IBM Plex Mono', monospace", size: 11 } },
           },
-          y: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+          y: {
+            grid: {
+              display: true,
+              color: "rgba(232,229,220,0.12)",
+              drawTicks: false,
+            },
+            ticks: { font: { size: 10.5 } },
+          },
         },
       },
     });
